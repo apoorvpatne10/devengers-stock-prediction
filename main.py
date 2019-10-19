@@ -6,6 +6,11 @@ from keras.layers import LSTM, Dense
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
+from keras.models import load_model
+
+model = load_model('weights/my_model.h5')
+
+
 data = pd.read_csv('data.csv')
 
 data.dropna(inplace=True)
@@ -53,19 +58,48 @@ print(y_test.shape[0])
 # #Fit model with history to check for overfitting
 # history= model.fit(X_train,y_train,epochs=150,validation_data=(X_test,y_test),shuffle=False)
 
-# model.save('my_model.h5')
+#model.save('my_model.h5')
 
-# plt.plot(history.history['loss'])
-# plt.plot(history.history['val_loss'])
-# plt.show()
+#plt.plot(history.history['loss'])
+#plt.plot(history.history['val_loss'])
+#plt.show()
 
 X_test = X_test.reshape((X_test.shape[0],X_test.shape[1],1))
 
-from keras.models import load_model
-
-model = load_model('my_model.h5')
 
 Xt = model.predict(X_test)
+Xt = scl.inverse_transform(Xt)
+
+new_data = X_test[-1]
+pred = Xt[-1]
+
+threshold = 50200
+
+#predx = scl.inverse_transform(pred)
+
+import datetime
+date = datetime.datetime(2019, 10, 19).date()
+
+response = ''
+
+for _ in range(10):
+    new_data = np.append(new_data[1:], pred)
+    new_datax = new_data.reshape(-1, 7, 1)
+    pred = model.predict(new_datax)
+    predx =  scl.inverse_transform(pred)[0][0]
+    if predx > threshold:
+        response += f"Stock price will be higher than threshold on {date.day}/{date.month}/{date.year}\n"
+    else:
+        response += f"Stock price is lower than threshold on {date.day}/{date.month}/{date.year}\n"
+    print(f"Predicted price on {date.day}/{date.month}/{date.year} : {predx}")
+    date += datetime.timedelta(days=1)
+
+
+import send_sms
+from send_sms import check_threshold
+
+stuff = check_threshold(response)
+
 plt.plot(scl.inverse_transform(y_test.reshape(-1,1)))
 plt.plot(scl.inverse_transform(Xt))
 plt.show()
